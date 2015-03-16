@@ -30,10 +30,18 @@ library(stringi)
 #returns of a vector of vectors for each lines
 # x[1] = a vector of tokens from the first line
 # x[[1]][1] = the first token
+#
+# NOTE this means the 'documents' (i.e. the first level split) can include multiple sentences and
+# that can get lost as punctuation is stripped off.  The presence of words in the same document
+# can still convey information though, so let's keep it for now.
+#
 getTokens <- function(x)
 {
   #Initial tokenization split
   y <- stri_split_regex(x, pattern = '\\s+')
+  
+  #collapse everything to lowercase
+  y <- lapply(y, stri_trans_tolower)
   
   #On each token discard any non-letters
   y <- lapply(y, stri_replace_all, replacement = '', charclass = '[\\P{Letter}]')
