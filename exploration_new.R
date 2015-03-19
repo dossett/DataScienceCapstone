@@ -28,6 +28,8 @@ cleanUpText <- function(x)
 #Special look at first words of sentences
 # FIXME - do this
 library(data.table)
+
+
 make3Gram <- function(x)
 {
   return (make3GramHelper(x, data.table()))
@@ -65,23 +67,35 @@ make3GramHelper <- function(x, table)
 
 start <- Sys.time()
 tweetTokens <- getTokens(sampleTweets)
-newsTokens <- getToken(sampleNews)
-blogTokens <- getToken(sampleBlogs)
+newsTokens <- getTokens(sampleNews)
+blogTokens <- getTokens(sampleBlogs)
 three_tweet <- rbindlist(lapply(tweetTokens, make3Gram), use.names = T, fill = F)
 three_news <- rbindlist(lapply(newsTokens, make3Gram), use.names = T, fill = F)
 three_blog <- rbindlist(lapply(blogTokens, make3Gram), use.names = T, fill = F)
 end <- Sys.time()
 
-#two_tweet <- three_tween[,c(n1,n2,occur)]
-#one
+three_all <- rbindlist(list(three_tweet, three_news, three_blog))
+two_all <- three_all
+two_all$n3 <- NULL
+one_all <- two_all
+one_all$n2 <- NULL
 
-# tweet_sum <- cbind(three_tweet,c(1)) %>%
-#   arrange(n1,n2,n3)
-# 
-# tweet_sum <- tweet_sum %>% 
-#   group_by(n1, n2, n3) %>%
-#   summarise(count = sum(V2)) 
-# 
-# tweet_sum <- tweet_sum %>% arrange(desc(count))
-# 
-# two_tweet <- tweet_sum %>% group_by(n1, n2) %>% summarise(count=sum(count))
+library(dplyr)
+one_summed <- one_all %>% group_by(n1) %>% summarise(total=sum(occur)) %>% arrange(desc(total))
+two_summed <- two_all %>% group_by(n1,n2) %>% summarise(total=sum(occur)) %>% arrange(desc(total))
+three_summed <- three_all %>% group_by(n1,n2,n3) %>% summarise(total=sum(occur)) %>% arrange(desc(total))
+
+#FIXME -- cleanup memory here
+
+#A function that for each data table add a percent of total column and cumulative total column
+addCumStats <- function(x)
+{
+  grandTotal <- sum (x$total)
+  x$percTotal <- x$total / grandTotal
+  mutate(x[order(desc(x$total)),], cumPerc = cumsum(percTotal))
+}
+
+three_enriched <- addCumStats(three_summed)
+two_enriched <- addCumStats(two_summed)
+one_enriched <- addCumStats(one_summed)
+
