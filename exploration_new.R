@@ -26,9 +26,24 @@ cleanUpText <- function(x)
 #allText <- sapply(c(sampleNews, sampleTweets, sampleBlogs), cleanUpText)
 
 #Special look at first words of sentences
-# FIXME - do this
-library(data.table)
+allFirstWords <- c(sapply(tweetTokens, function(x) x[1]),
+                   sapply(blogTokens, function(x) x[1]),
+                   sapply(newsTokens, function(x) x[1]))
+firstWordsTable <- data.table(word=allFirstWords, occur=1) %>%
+  group_by(word) %>%
+  summarise(total = sum(occur)) %>%
+  arrange(desc(total))
 
+library(data.table)
+getFirstWords <- function(x, table)
+{
+  if (length(x) > 0)
+  {
+    table <- rbind(table, list(n1=x[1], occur=1)
+  }
+  
+  return table
+}
 
 make3Gram <- function(x)
 {
@@ -48,23 +63,6 @@ make3GramHelper <- function(x, table)
   }
 }
 
-#Construct 1-, 2-, 3-, and 4-gram tokenizers to process these documents
-# library(RWeka)
-# library(tm)
-# delimit = ' \t' #delimit on space and tab, leave newline to separate sentences
-# OneGramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1, delimiters=delimit))
-# TwoGramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2, delimiters=delimit))
-# ThreeGramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3, delimiters=delimit))
-# FourGramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 4, max = 4, delimiters=delimit))
-# 
-# vc <- VCorpus(VectorSource(cleanText))
-# one_tdm <- TermDocumentMatrix(vc, control=list(tokenize=OneGramTokenizer))
-# two_tdm <- TermDocumentMatrix(vc, control=list(tokenize=TwoGramTokenizer))
-# three_tdm <- TermDocumentMatrix(vc, control=list(tokenize=ThreeGramTokenizer))
-# four_tdm <- TermDocumentMatrix(vc, control=list(tokenize=FourGramTokenizer))
-
-#system.time(all_three <- rbindlist(lapply(newsTokens, make3Gram), use.names = T, fill = F))
-
 start <- Sys.time()
 tweetTokens <- getTokens(sampleTweets)
 newsTokens <- getTokens(sampleNews)
@@ -73,6 +71,8 @@ three_tweet <- rbindlist(lapply(tweetTokens, make3Gram), use.names = T, fill = F
 three_news <- rbindlist(lapply(newsTokens, make3Gram), use.names = T, fill = F)
 three_blog <- rbindlist(lapply(blogTokens, make3Gram), use.names = T, fill = F)
 end <- Sys.time()
+
+#Data is saved at this point, can reload it from a file
 
 three_all <- rbindlist(list(three_tweet, three_news, three_blog))
 two_all <- three_all
@@ -92,10 +92,11 @@ addCumStats <- function(x)
 {
   grandTotal <- sum (x$total)
   x$percTotal <- x$total / grandTotal
-  mutate(x[order(desc(x$total)),], cumPerc = cumsum(percTotal))
+  x <- mutate(x[order(desc(x$total)),], cumPerc = cumsum(percTotal))
+  #x <- mutate(x, rownum = row_number(x))
+  x <- mutate(x, rownum = 1:dim(x)[1])
 }
 
 three_enriched <- addCumStats(three_summed)
 two_enriched <- addCumStats(two_summed)
 one_enriched <- addCumStats(one_summed)
-

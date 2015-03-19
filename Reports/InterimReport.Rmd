@@ -1,0 +1,123 @@
+---
+title: "Data Science Specialization Capstone"
+author: "Aaron Niskode-Dossett"
+date: "Thursday, March 19, 2015"
+output: html_document
+---
+
+This report summarizes my initial data capture, exploration, as well as transformations of sampled data.
+
+# Analysis of Raw Data
+Our corpora are three samples of data from twitter, blogs, and news reports.  This first analysis was performed on the raw files with the <code>wc</code> command in git bash. Because this was on a Windows machine I can not directly execute these commands with R's <code>system</code> method.
+
+```{r, echo=FALSE}
+library(data.table)
+table <- data.table()
+table <- rbind(table, list(RawFile="twitter", lines=899288, words=37334131))
+table <- rbind(table, list(RawFile="news", lines=1010242, words=34372530))
+table <- rbind(table, list(RawFile="twitter", lines=2360148, words=30373583))
+table
+```
+
+Rather than analyze every line if the data we will create a sample from each file.  For current performance reasons I sample 3% of tweets and news and only 1% of blogs.  It is my intention to improve the peformance of my processing algorithms to make larger samples more feasible.  Samples are random and independent.  Each line of the file is considered separately and has an X% of being included in the sample.
+
+# Sampling and cleansing data
+
+Next, the text is cleansed. The <code>stringi</code> library was invaluable in effeciently performing these tasks.  Cleansing includes the following steps:
+
+* Removing non-UTF8 characters, these show up as <U+XXXX>
+* translating each character to lowercase
+* translating dashes ("-") to spaces to preserve the individual words
+* removing all digits and punctuation other than apostrophes (this prevents "don't" from being collapsed to "dont")
+
+Steps not (yet) implemented:
+
+* removing profanity
+* removing foreign words
+
+It is my belief that these words will be rare enough that they should not appear in predictions.  I will validate this assumption later in my project and revisit it if necessary.
+
+Here is an example result of this cleansing:
+```{r, echo=F}
+readFile <- function(fullPath)
+{
+  fh <- file(fullPath, "rb")
+  all <- readLines(fh, encoding="UTF-8", skipNul = T)
+  close(fh)
+  
+  all
+}
+
+library(stringi)
+getTokens <- function(x)
+{
+  #Initial tokenization split
+  y <- stri_split_regex(x, pattern = '\\s+')
+  
+  #collapse everything to lowercase
+  y <- lapply(y, stri_trans_tolower)
+  
+  #On each token discard any non-letters
+  y <- lapply(y, stri_replace_all, replacement = '', charclass = '[\\P{Letter}]')
+  
+  #Drop any tokens that have been reduced to nothing (i.e. had no letters to begin with)
+  y <- lapply(y, stri_subset, regex='[\\p{Letter}]')
+}
+
+singleTweet <- readLines("..//data//en_US//en_US.twitter.txt", n=1,encoding = "UTF-8")
+singleTweet
+print(getTokens(singleTweet))
+```
+
+# Analysis of cleansed data
+I next want to understand the frequencies of single words, word pairs (bigrams) and word triplets (trigrams).  I combine the lines from all data sources and count the unique words, bigrams, and trigrams.  I also consider the fraction of the total each accounts for and track the cumulative percentage of the rows in each list.  The top few results for each are below along with a 
+
+```{r, echo=FALSE, cache=T}
+three_enriched = read.table("c:\\Data/AaronClasses/capstone/working_data/three.enriched.txt")
+two_enriched = read.table("c:\\Data/AaronClasses/capstone/working_data/two.enriched.txt")
+one_enriched = read.table("c:\\Data/AaronClasses/capstone/working_data/one.enriched.txt")
+head(one_enriched)
+head(two_enriched)
+head(three_enriched)
+
+plot(x=one_enriched$rownum, y=one_enriched$cumPerc, xlab="Top Terms", ylab = "Cumulative % of total", main = "Unigram Distribution")
+
+plot(x=two_enriched$rownum, y=two_enriched$cumPerc, xlab="Top Terms", ylab = "Cumulative % of total", main="Bigram Distribution")
+
+plot(x=three_enriched$rownum, y=three_enriched$cumPerc, xlab="Top Terms", ylab = "Cumulative % of total", main="Trigram Distribution")
+```
+As might be expected, the unigram distribution is heavily skewed to a few highly common words.  
+
+* 83,978 words appear a total 2,037,130 times in the data.  
+* The 10 most common words represent 16% of the population
+* The 135 most common words (0.2%) represent over 50% of the population
+* Over half the words appear only one time.
+
+The Bigram distribution is also quite skewed, but to a lesser extent than Unigrams
+
+* There are 807,882 unique Bigrams
+* The 10 most common reperesent over 2% of the total occurences
+* The 36,597 most common Bigrans (4.% of the total) represent over half of the occurrences
+
+Finally, the Trigrams are slightly skewed at beginning with a very long tail afterwards.  Over 88% of trigrams appear only once.
+
+# First words
+The first word in a sentence is almost a separate problem that predicting the next words based on previous words.  Because of that, I note the three most common words to begin a sentence:
+
+* I
+* The
+* I'm
+
+# Implications
+The incredible skew of unigrams is quite interesting.  Over 25% of bigrams contain at least one of the ten most common words.  This suggests that a second pass over the data that filters out these common words could produce better insight into word associations.
+
+For example, the phrase "wine and cheese" might be quite common, but the link between "wine" and "cheese" will never be observed in an unfiltered bigram.  Even a trigram would miss this link from phrases like "some wine and some cheese".  The order of words is also less important for this sort of relationship, we want to capture that both words appeared in the same sentence.  
+
+Filtering words could also drastically reduce the size of the data and make it more feasible to capture a greater sample of the corpora for ultimate model building.
+
+The ultimate prediction model feels like it has two aspects:
+
+* Completing a common bigram or trigram.  For example "the rest of" is quite likely to be followed by "the" or "my" or "your" and those words seem very reasonable predictions.
+* Completion based prior words in a sentence. For example "the chips and the rest of the" is likely followed a word with a close relationship to "chips" such as "beer" or "salsa"
+
+Because of this I think the set of common word phrases AND the analysis with common words removed will both be important to the final model.

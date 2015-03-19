@@ -28,20 +28,17 @@ makeAll3GramHelper <- function(x, table)
 #Returns a data.table with n1 = first, n2 = second, n3 = third word
 #vector with length < 3 returns empty
 
-make3Gram <- function(x)
+makeAll3GramLoop <- function(x)
 {
-    return (make3GramHelper(x, data.table()))
+  gramTable = data.table()
+  LL <- vector()
+  for (i in 1:length(x))
+  {
+    #print(paste("Working on ", x[i]))
+    #print(make3Gram(x[i]))
+    #gramTable <- rbindlist(list(gramTable, make3Gram(x[[i]])), use.names = T, fill = F)
+    LL[i] <- make3Gram(x[[i]])
+  }
+  return(rbindlist(list(LL), use.names=T, fill=F))
 }
 
-make3GramHelper <- function(x, table)
-{
-  if (length(x) < 3)
-  {
-    return (table)
-  }
-  else
-  {
-    table <- rbind(table, list(n1=x[1], n2=x[2], n3=x[3]))
-    return (make3GramHelper(x[-1], table))
-  }
-}
