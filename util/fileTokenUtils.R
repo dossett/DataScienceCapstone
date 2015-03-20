@@ -50,4 +50,4 @@ getTokens <- function(x)
   y <- lapply(y, stri_subset, regex='[\\p{Letter}]')
 }
 
-#sapply(files, sampleFile, sampleRate = .01)
+sapply(files, sampleFile, sampleRate = .1)

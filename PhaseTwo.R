@@ -3,7 +3,7 @@
 
 #Load unigram distribution from sampled data
 unigrams <- read.table("working_data/one.enriched.txt", stringsAsFactors = F, header = T)
-topN <- 50
+topN <- 75
 topNWords <- unigrams[1:topN, "n1"]
 
 readFile <- function(fullPath)
@@ -32,7 +32,11 @@ cleanAndTokenize <- function(x)
   {
     unlist(Filter(function(token){!(token %in% topNWords)},x))
   }
-  y <- lapply(y, stopWordFilter)
+  #UGLY
+  if (topN > 0)
+  {
+    y <- lapply(y, stopWordFilter)  
+  }
   
   #Drop any tokens that have been reduced to nothing (i.e. had no letters to begin with)
   y <- lapply(y, stri_subset, regex='[\\p{Letter}]')
@@ -57,23 +61,35 @@ make3GramHelper <- function(x, table)
   }
   return(rbindlist(tableList, use.names = T, fill = F))
 }
-    
-#   if (length(x) < 3)
-#   {
-#     return (table)
-#   }
-#   else
-#   {
-#     table <- rbind(table, list(n1=x[1], n2=x[2], n3=x[3], occur=1))
-#     return (make3GramHelper(x[-1], table))
-#   }
-#}
 
+make4Gram <- function(x)
+{
+  if (length(x) < 4)
+    return(data.table())
+  max = length(x) - 3
+  tableList = list()
+  for (i in 1:max)
+  {
+    tableList[[length(tableList)+1]] <- 
+      list(n1=x[i], n2=x[i+1], n3=x[i+2], n4=x[i+3], occur=1)
+  }
+  return(rbindlist(tableList, use.names = T, fill = F))
+}
+    
 #Collapse a 3gram data table into a summation
 library(dplyr)
 sum3Grams <- function(x)
 {
-  x %>% group_by(n1,n2,n3) %>% summarise(total=sum(occur)) %>% arrange(desc(total))
+  x %>% group_by(n1,n2,n3) %>% 
+    summarise(total=sum(occur)) %>% 
+    arrange(desc(total))
+}
+
+sum4Grams <- function(x)
+{
+  x %>% group_by(n1,n2,n3,n4) %>% 
+    summarise(total=sum(occur)) %>% 
+    arrange(desc(total))
 }
 
 #Function to get tokens from a set of files and write back as 3gram data tables
@@ -103,10 +119,50 @@ write3Grams <- function(filePath="second_pass/", filePrefix="^SAMPLEaa")
   }
 }
 
+write4Grams <- function(filePath="second_pass/", filePrefix="^SAMPLEaa")
+{
+  #Get list of files
+  files <- dir(path=filePath, pattern=filePrefix)
+  
+  for (f in files)
+  {
+    print(paste("Processing [", f, "]"))
+    lines <- readFile(paste(filePath, f, sep = ""))
+    print("   Creating Tokens")
+    tokens <- cleanAndTokenize(lines)
+    print("   Creating 4Grams")
+    FourGramDT <- rbindlist(lapply(tokens, make4Gram), use.names = T, fill = F)
+    print("   Summing and Saving 4Grams")
+    write.table(sum4Grams(FourGramDT), file=paste(filePath,f,".4gram", sep=""))
+  }
+}
+
 #Combine all of the 3gram files into an uber data table
 loadTables <- function(path="second_pass/", pattern="^SAMPLE.*3gram")
 {
   files <- dir(path, pattern, full.names = T)
   uberTable <- rbindlist(lapply(files, read.table), use.names = T, fill=F)
-  uberTable %>% group_by(n1,n2,n3) %>% summarise(grandTotal=sum(total)) %>% arrange(desc(grandTotal))
+  uberTable %>% group_by(n1,n2,n3) %>% 
+    summarise(grandTotal=sum(total)) %>% 
+    arrange(desc(grandTotal))
+}
+
+load4Grams <- function(path="second_pass/", pattern="^SAMPLE.*4gram")
+{
+  files <- dir(path, pattern, full.names = T)
+  uberTable <- rbindlist(lapply(files, read.table), use.names = T, fill=F)
+  uberTable %>% group_by(n1,n2,n3, n4) %>% 
+    summarise(grandTotal=sum(total)) %>% 
+    arrange(desc(grandTotal))
+}
+
+#Convert a 3gram table to a 2gram
+Three2TwoGram <- function(x)
+{
+  twoGram <- x
+  twoGram$n3 <- NULL
+  twoGram$total <- twoGram$grandTotal
+  twoGram %>% group_by(n1,n2) %>%
+    summarise(grandTotal = sum(total)) %>%
+    arrange(desc(grandTotal))
 }
