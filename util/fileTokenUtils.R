@@ -10,15 +10,14 @@ readFile <- function(fullPath)
   all
 }
 
-sampleFile <- function(fullPath, sampleRate = .1)
+sampleFile <- function(fullPath, sampleRate = .1, seed=1976, fileSuffix="_SAMPLE")
 {
   set.seed(1976L)
   all <- readFile(fullPath)
   keepers = rbinom(length(all),1, sampleRate)
   subset = all[keepers == 1]
   
-  #writeLines(subset, paste(fullPath, "_SAMPLE", sep = ''))
-  output <- file(paste(fullPath, "_SAMPLE", sep = ''), open="w", encoding = "UTF-8")
+  output <- file(paste(fullPath, fileSuffix, sep = ''), open="w", encoding = "UTF-8")
   writeLines(subset, output)
   close(output)
 }
@@ -50,4 +49,4 @@ getTokens <- function(x)
   y <- lapply(y, stri_subset, regex='[\\p{Letter}]')
 }
 
-sapply(files, sampleFile, sampleRate = .1)
+#sapply(files, sampleFile, sampleRate = .1)

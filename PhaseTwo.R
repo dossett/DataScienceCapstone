@@ -2,9 +2,9 @@
 #or at least a LOT of it.  Several functions will be reimplemented.
 
 #Load unigram distribution from sampled data
-unigrams <- read.table("working_data/one.enriched.txt", stringsAsFactors = F, header = T)
-topN <- 75
-topNWords <- unigrams[1:topN, "n1"]
+# unigrams <- read.table("working_data/one.enriched.txt", stringsAsFactors = F, header = T)
+# topN <- 75
+# topNWords <- unigrams[1:topN, "n1"]
 
 readFile <- function(fullPath)
 {
