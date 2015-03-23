@@ -27,16 +27,16 @@ cleanAndTokenize <- function(x)
   #On each token discard any non-letters
   y <- lapply(y, stri_replace_all, replacement = '', charclass = '[\\P{Letter}]')
   
-  #A little ugly.  For each element of y, filter it against stopwords
-  stopWordFilter <- function(x)
-  {
-    unlist(Filter(function(token){!(token %in% topNWords)},x))
-  }
-  #UGLY
-  if (topN > 0)
-  {
-    y <- lapply(y, stopWordFilter)  
-  }
+#   #A little ugly.  For each element of y, filter it against stopwords
+#   stopWordFilter <- function(x)
+#   {
+#     unlist(Filter(function(token){!(token %in% topNWords)},x))
+#   }
+#   #UGLY
+#   if (topN > 0)
+#   {
+#     y <- lapply(y, stopWordFilter)  
+#   }
   
   #Drop any tokens that have been reduced to nothing (i.e. had no letters to begin with)
   y <- lapply(y, stri_subset, regex='[\\p{Letter}]')
@@ -74,6 +74,13 @@ make4Gram <- function(x)
       list(n1=x[i], n2=x[i+1], n3=x[i+2], n4=x[i+3], occur=1)
   }
   return(rbindlist(tableList, use.names = T, fill = F))
+}
+
+make4GramSTART <- function(x)
+{
+  if (length(x) < 4)
+    return(data.table())
+  return(rbindlist(list(list(n1=x[1], n2=x[2], n3=x[3], n4=x[4], occur=1)), use.names=T, fill=F))
 }
     
 #Collapse a 3gram data table into a summation
@@ -135,6 +142,24 @@ write4Grams <- function(filePath="second_pass/", filePrefix="^SAMPLEaa")
     print("   Summing and Saving 4Grams")
     write.table(sum4Grams(FourGramDT), file=paste(filePath,f,".4gram", sep=""))
   }
+}
+
+#Create ONLY the 4grams that begin a sentence/document
+writeStarting4Grams <- write4Grams <- function(filePath="second_pass/", filePrefix="^SAMPLEaa")
+  {
+    #Get list of files
+    files <- dir(path=filePath, pattern=filePrefix)
+    
+    for (f in files)
+    {
+      print(paste("Processing [", f, "]"))
+      lines <- readFile(paste(filePath, f, sep = ""))
+      print("   Creating Tokens")
+      tokens <- cleanAndTokenize(lines)
+      FourGramDT <- rbindlist(lapply(tokens, make4GramSTART), use.names = T, fill = F)
+      print("   Summing and Saving Starting 4Grams")
+      write.table(sum4Grams(FourGramDT), file=paste(filePath,f,".4gramSTART", sep=""))
+    }
 }
 
 #Combine all of the 3gram files into an uber data table
