@@ -3,7 +3,7 @@ files = c('data//en_US//en_US.blogs.txt', 'data//en_US//en_US.news.txt', 'data//
 
 readFile <- function(fullPath)
 {
-  fh <- file(fullPath, "rb")
+  fh <- file(fullPath, "r")
   all <- readLines(fh, encoding="UTF-8", skipNul = T)
   close(fh)
   
@@ -12,7 +12,7 @@ readFile <- function(fullPath)
 
 sampleFile <- function(fullPath, sampleRate = .1, seed=1976, fileSuffix="_SAMPLE")
 {
-  set.seed(1976L)
+  set.seed(seed)
   all <- readFile(fullPath)
   keepers = rbinom(length(all),1, sampleRate)
   subset = all[keepers == 1]

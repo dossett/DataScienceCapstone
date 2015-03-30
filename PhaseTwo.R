@@ -8,7 +8,7 @@
 
 readFile <- function(fullPath)
 {
-  fh <- file(fullPath, "rb")
+  fh <- file(fullPath, "r", encoding = "UTF-8")
   all <- readLines(fh, encoding="UTF-8", skipNul = T)
   close(fh)
   
@@ -21,11 +21,15 @@ cleanAndTokenize <- function(x)
   #Initial tokenization split
   y <- stri_split_regex(x, pattern = '\\s+')
   
+  #To UTF-8
+  y <- lapply(y, stri_enc_toutf8)
+  
   #collapse everything to lowercase
   y <- lapply(y, stri_trans_tolower)
   
   #On each token discard any non-letters
   y <- lapply(y, stri_replace_all, replacement = '', charclass = '[\\P{Letter}]')
+  
   
 #   #A little ugly.  For each element of y, filter it against stopwords
 #   stopWordFilter <- function(x)
